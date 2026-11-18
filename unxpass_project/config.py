@@ -42,11 +42,33 @@ COMPETITIONS = {
     "euro2024": {"competition_id": 55, "season_id": 282, "label": "UEFA Euro 2024"},
 }
 
-# Train/validate on Euro 2020; hold World Cup 2022 back entirely as the
-# unseen test competition.
-TRAIN_COMPETITION = "euro2020"
-TEST_COMPETITION = "worldcup2022"
+# ---------------------------------------------------------------------------
+# The three datasets.
+#
+# Vocabulary follows the assignment, not scikit-learn:
+#   TRAIN   -- fits the models
+#   TEST    -- held-out matches from the same competitions; used while
+#              developing, to check the pipeline and compare with the paper
+#   UNSEEN  -- an entirely separate competition, never touched until the
+#              training and test work is finished ("validation" in the
+#              assignment's terms)
+#
+# The unseen set is a different *competition* rather than a random slice of
+# the same one. That is a stricter test of generalisation, and it is the
+# project's research question: does a creativity metric trained on one
+# tournament transfer to another?
+# ---------------------------------------------------------------------------
+TRAIN_COMPETITIONS = ["euro2020", "euro2024"]
+UNSEEN_COMPETITION = "worldcup2022"
 
-# Fraction of Euro 2020 *matches* (not passes) held out for validation.
-VALIDATION_FRACTION = 0.2
+# Fraction of training-pool *matches* (not passes) held out as the test set.
+TEST_FRACTION = 0.2
 SPLIT_SEED = 42
+
+# Name under which the pooled training competitions are stored.
+POOL_NAME = "euros"
+
+# Backwards-compatible aliases.
+TRAIN_COMPETITION = TRAIN_COMPETITIONS[0]
+TEST_COMPETITION = UNSEEN_COMPETITION
+VALIDATION_FRACTION = TEST_FRACTION

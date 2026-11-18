@@ -67,3 +67,11 @@ def game_ids(competition: str) -> List[int]:
         return games.index.tolist()
     finally:
         db.close()
+
+
+def game_ids_many(competitions) -> List[int]:
+    """Game ids across several competitions, pooled."""
+    out: List[int] = []
+    for c in competitions:
+        out.extend(game_ids(c))
+    return sorted(set(out))

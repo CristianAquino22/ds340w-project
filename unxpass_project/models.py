@@ -48,12 +48,24 @@ PASS_SUCCESS_FEATURES: Dict[str, list] = {
 }
 
 # --- VAEP feature set, from config/experiment/pass_value/vaep_xg_360.yaml
-VAEP_FEATURES = [
+#
+# The last three are derived from the StatsBomb 360 freeze frame: they are the
+# only features in the value model that know where the off-ball players are.
+# Splitting them out lets us test the claim Hassani et al. (2025) make about
+# DxT -- that a value model ignoring off-ball positions is missing something.
+VAEP_SPATIAL_FEATURES = [
+    "packing_rate",
+    "defenders_in_3m_radius",
+    "defenders_in_5m_radius",
+]
+
+VAEP_BASE_FEATURES = [
     "actiontype_onehot", "result_onehot", "actiontype_result_onehot",
     "bodypart_onehot", "time", "startlocation", "endlocation", "startpolar",
     "endpolar", "movement", "team", "time_delta", "space_delta", "goalscore",
-    "packing_rate", "defenders_in_3m_radius", "defenders_in_5m_radius",
 ]
+
+VAEP_FEATURES = VAEP_BASE_FEATURES + VAEP_SPATIAL_FEATURES
 
 VAEP_XGB_PARAMS = dict(
     objective="reg:logistic",
@@ -85,28 +97,43 @@ def build_pass_success():
     )
 
 
-def build_pass_value():
-    """VAEP: separate offensive and defensive models, differenced at predict."""
+def build_pass_value(spatial: bool = True):
+    """VAEP: separate offensive and defensive models, differenced at predict.
+
+    Parameters
+    ----------
+    spatial
+        Include the three freeze-frame features (`packing_rate`,
+        `defenders_in_3m_radius`, `defenders_in_5m_radius`). Setting this to
+        False gives a value model blind to off-ball positions, which is the
+        ablation used to test DxT's argument.
+    """
     from xgboost import XGBRegressor
 
+    features = VAEP_FEATURES if spatial else VAEP_BASE_FEATURES
     return pass_value.VaepModel(
         offensive_model=pass_value.OffensiveVaepModel(
             model=XGBRegressor(**VAEP_XGB_PARAMS),
-            features=VAEP_FEATURES,
+            features=features,
             label=["scores", "scores_xg"],
         ),
         defensive_model=pass_value.DefensiveVaepModel(
             model=XGBRegressor(**VAEP_XGB_PARAMS),
-            features=VAEP_FEATURES,
+            features=features,
             label=["concedes", "concedes_xg"],
         ),
     )
+
+
+def build_pass_value_nonspatial():
+    return build_pass_value(spatial=False)
 
 
 BUILDERS: Dict[str, Callable] = {
     "pass_selection": build_pass_selection,
     "pass_success": build_pass_success,
     "pass_value": build_pass_value,
+    "pass_value_nonspatial": build_pass_value_nonspatial,
 }
 
 

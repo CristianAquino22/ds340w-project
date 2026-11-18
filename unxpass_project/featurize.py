@@ -71,3 +71,52 @@ def load(name: str):
         yfns=all_labels,
         load_cached=True,
     )
+
+
+def pool(name: str, sources: Sequence[str]) -> Path:
+    """Combine cached datasets into one, without recomputing features.
+
+    Feature computation is the most expensive stage, and its output is cached
+    per dataset as parquet files keyed on (game_id, action_id). Competitions
+    never share game ids, so pooling is a concatenation -- no need to redo work
+    already done for a competition that is being added to.
+    """
+    import pandas as pd
+
+    out = config.DATASETS / name
+    out.mkdir(parents=True, exist_ok=True)
+    src_paths = [config.DATASETS / s for s in sources]
+    missing = [str(p) for p in src_paths if not p.exists()]
+    if missing:
+        raise FileNotFoundError(f"cannot pool, dataset(s) not built: {missing}")
+
+    files = sorted({f.name for p in src_paths for f in p.glob("*.parquet")})
+    n_rows = None
+    for fname in files:
+        parts = []
+        for p in src_paths:
+            fp = p / fname
+            if fp.exists():
+                parts.append(pd.read_parquet(fp))
+            else:
+                print(f"[pool] warning: {fname} missing from {p.name}, skipped")
+        if not parts:
+            continue
+        merged = pd.concat(parts)
+        merged.to_parquet(out / fname)
+        if fname.startswith("y_") and n_rows is None:
+            n_rows = len(merged)
+    print(f"[pool] {name}: {len(sources)} sources -> {n_rows} passes at {out}")
+    return out
+
+
+def count_passes(name: str) -> int:
+    """Number of passes in a cached dataset, without loading features."""
+    import pandas as pd
+
+    path = config.DATASETS / name
+    for f in sorted(path.glob("y_*.parquet")):
+        return len(pd.read_parquet(f))
+    for f in sorted(path.glob("x_*.parquet")):
+        return len(pd.read_parquet(f))
+    raise FileNotFoundError(f"no cached dataset at {path}")
