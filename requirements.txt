@@ -4,8 +4,7 @@
 #   py -3.10 -m venv .venv
 #   .venv\Scripts\activate          (Windows)
 #   pip install -r requirements.txt
-#   pip install --no-deps -e vendor/un-xPass
-#
+#   pip install --no-deps -e .
 # The upper bounds are not cosmetic. Each one pins away a real breakage:
 #   click       >=8.2   -- breaks the typer-based unxpass CLI
 #   multimethod >=2.0   -- breaks socceraction's dispatch
